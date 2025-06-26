@@ -1,0 +1,35 @@
+variables:
+  slack_token: "xoxb-your-token"
+  environment: "production"
+
+destinations:
+  discord_general: "https://127.0.0.1:9090/api/webhooks/{{.var.slack_token}}"
+  custom_api:
+    url: "https://api.example.com/notifications"
+    method: "PUT"
+    body: |
+      {
+        "env": "{{.var.environment}}",
+        "service": "{{.params.service}}",
+        "event": "{{.params.event}}"
+      }
+
+routes:
+  - methods: ["POST", "PUT"]
+    paths:
+      - "/{service}/{event}"
+      - "/webhook/{service}/{event}"
+    response:
+      body: |
+        {
+          "status": "success",
+          "message": "Event {{.params.event}} for service {{.params.service}} processed.",
+          "result": {{ toJson .results }}
+        }
+    matchers:
+      - service: "frontend"
+        to:
+          - discord_general
+          - url: "https://hooks.slacker.com/{{.params.service}}"
+            method: "POST"
+            body: '{"text": "{{.params.service}} event: {{.params.event}}"}'
