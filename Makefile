@@ -11,7 +11,7 @@ ifdef CONTAINER_BUILD
 endif
 
 LINK_FLAGS :=
-LDFLAGS := -ldflags='$(VERSION_FLAGS) $(LINK_FLAGS)'
+LDFLAGS := -ldflags='-w -s $(VERSION_FLAGS) $(LINK_FLAGS)'
 ifneq ($(GO_BUILD_TAGS),)
 	GO_BUILD_TAGS := -tags "$(GO_BUILD_TAGS)"
 endif
