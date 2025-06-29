@@ -479,6 +479,15 @@ func (ws *WebhookServer) forwardToDestination(ctx context.Context, dest configAp
 		req.Header.Set(name, value)
 	}
 
+	logger.Debug("Forwarding request",
+		"destination", dest.Name,
+		"url", dest.URL,
+		"method", dest.Method,
+		"headers", req.Header,
+		"body_size", len(dest.Body),
+		"body", string(dest.Body),
+	)
+
 	resp, err := ws.client.Do(req)
 	duration := time.Since(start)
 
@@ -502,7 +511,6 @@ func (ws *WebhookServer) forwardToDestination(ctx context.Context, dest configAp
 			Duration:    duration.Milliseconds(),
 		}
 	}
-	defer resp.Body.Close()
 
 	success := resp.StatusCode >= 200 && resp.StatusCode < 300
 	status := "success"
@@ -513,13 +521,30 @@ func (ws *WebhookServer) forwardToDestination(ctx context.Context, dest configAp
 	ws.metrics.ForwardingTotal.WithLabelValues(dest.Name, status).Inc()
 	ws.metrics.ForwardingDuration.WithLabelValues(dest.Name, status).Observe(duration.Seconds())
 
+	if logger.Enabled(ctx, slog.LevelDebug) {
+		bodyBytes, err := io.ReadAll(resp.Body)
+		if err != nil {
+			logger.Error("Failed to read response body", "destination", dest.Name, "url", dest.URL, "error", err)
+		} else {
+			logger.Debug("Response body",
+				"destination", dest.Name,
+				"url", dest.URL,
+				"method", dest.Method,
+				"status", resp.StatusCode,
+				"body", string(bodyBytes))
+		}
+	}
+
+	defer resp.Body.Close()
+
 	if success {
 		logger.Debug("Successfully forwarded request",
 			"destination", dest.Name,
 			"url", dest.URL,
 			"method", dest.Method,
 			"headers", dest.Headers,
-			"status", resp.StatusCode,
+			"status", resp.Status,
+			"statusCode", resp.StatusCode,
 			"duration", duration)
 	} else {
 		logger.Warn("Request forwarded but received error status",
@@ -527,7 +552,8 @@ func (ws *WebhookServer) forwardToDestination(ctx context.Context, dest configAp
 			"url", dest.URL,
 			"method", dest.Method,
 			"headers", dest.Headers,
-			"status", resp.StatusCode,
+			"status", resp.Status,
+			"statusCode", resp.StatusCode,
 			"duration", duration)
 	}
 
