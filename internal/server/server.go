@@ -7,7 +7,7 @@ import (
 	"fmt"
 	configApi "github.com/framjet/go-webhook-middleman/internal/config"
 	metricsApi "github.com/framjet/go-webhook-middleman/internal/metrics"
-	"github.com/framjet/go-webhook-middleman/internal/template"
+	"github.com/framjet/go-webhook-middleman/internal/templateRenderer"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -210,7 +210,7 @@ func (ws *WebhookServer) handleDynamicWebhook(w http.ResponseWriter, r *http.Req
 	}
 
 	// Create template context
-	templateCtx := template.TemplateContext{
+	templateCtx := templateRenderer.TemplateContext{
 		Params:    params,
 		Variables: ws.Config.Variables,
 		Body:      string(body),
@@ -281,7 +281,7 @@ func (ws *WebhookServer) handleDynamicWebhook(w http.ResponseWriter, r *http.Req
 	}
 }
 
-func (ws *WebhookServer) findMatchingDestinations(route *configApi.Route, params map[string]string, ctx template.TemplateContext, logger *slog.Logger) []configApi.ResolvedDestination {
+func (ws *WebhookServer) findMatchingDestinations(route *configApi.Route, params map[string]string, ctx templateRenderer.TemplateContext, logger *slog.Logger) []configApi.ResolvedDestination {
 	var destinations []configApi.ResolvedDestination
 
 	// Process matchers
@@ -355,7 +355,7 @@ func (ws *WebhookServer) stringMatches(pattern, value string, logger *slog.Logge
 	return pattern == value
 }
 
-func (ws *WebhookServer) resolveDestination(ref configApi.DestinationRef, ctx template.TemplateContext) (configApi.ResolvedDestination, error) {
+func (ws *WebhookServer) resolveDestination(ref configApi.DestinationRef, ctx templateRenderer.TemplateContext) (configApi.ResolvedDestination, error) {
 	resolved := configApi.ResolvedDestination{
 		Method:  "POST", // default
 		Headers: make(map[string]string),
@@ -366,7 +366,7 @@ func (ws *WebhookServer) resolveDestination(ref configApi.DestinationRef, ctx te
 		// Look up in global destinations
 		if globalDest, exists := ws.Config.Destinations[ref.Name]; exists {
 			var err error
-			resolved.URL, err = template.RenderTemplate(globalDest.URL, ctx)
+			resolved.URL, err = templateRenderer.RenderTemplate(globalDest.URL, ctx)
 			if err != nil {
 				return resolved, fmt.Errorf("failed to render global destination URL: %w", err)
 			}
@@ -376,7 +376,7 @@ func (ws *WebhookServer) resolveDestination(ref configApi.DestinationRef, ctx te
 				resolved.Method = globalDest.Method
 			}
 			if globalDest.Body != "" {
-				bodyStr, err := template.RenderTemplate(globalDest.Body, ctx)
+				bodyStr, err := templateRenderer.RenderTemplate(globalDest.Body, ctx)
 				if err != nil {
 					return resolved, fmt.Errorf("failed to render global destination body: %w", err)
 				}
@@ -390,7 +390,7 @@ func (ws *WebhookServer) resolveDestination(ref configApi.DestinationRef, ctx te
 	// Override with inline destination settings
 	if ref.URL != "" {
 		var err error
-		resolved.URL, err = template.RenderTemplate(ref.URL, ctx)
+		resolved.URL, err = templateRenderer.RenderTemplate(ref.URL, ctx)
 		if err != nil {
 			return resolved, fmt.Errorf("failed to render inline destination URL: %w", err)
 		}
@@ -402,7 +402,7 @@ func (ws *WebhookServer) resolveDestination(ref configApi.DestinationRef, ctx te
 
 	if ref.Headers != nil {
 		for key, value := range ref.Headers {
-			renderedValue, err := template.RenderTemplate(value, ctx)
+			renderedValue, err := templateRenderer.RenderTemplate(value, ctx)
 			if err != nil {
 				return resolved, fmt.Errorf("failed to render header '%s': %w", key, err)
 			}
@@ -411,7 +411,7 @@ func (ws *WebhookServer) resolveDestination(ref configApi.DestinationRef, ctx te
 	}
 
 	if ref.Body != "" {
-		bodyStr, err := template.RenderTemplate(ref.Body, ctx)
+		bodyStr, err := templateRenderer.RenderTemplate(ref.Body, ctx)
 		if err != nil {
 			return resolved, fmt.Errorf("failed to render inline destination body: %w", err)
 		}

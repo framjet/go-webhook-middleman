@@ -1,30 +1,46 @@
-# dario.cat/mergo v1.0.1
+# dario.cat/mergo v1.0.2
 ## explicit; go 1.13
 dario.cat/mergo
-# github.com/Masterminds/goutils v1.1.1
-## explicit
-github.com/Masterminds/goutils
-# github.com/Masterminds/semver/v3 v3.3.0
+# github.com/Masterminds/semver/v3 v3.3.1
 ## explicit; go 1.21
 github.com/Masterminds/semver/v3
-# github.com/Masterminds/sprig/v3 v3.3.0
-## explicit; go 1.21
-github.com/Masterminds/sprig/v3
 # github.com/beorn7/perks v1.0.1
 ## explicit; go 1.11
 github.com/beorn7/perks/quantile
 # github.com/cespare/xxhash/v2 v2.3.0
 ## explicit; go 1.11
 github.com/cespare/xxhash/v2
+# github.com/go-sprout/sprout v1.0.1
+## explicit; go 1.23.3
+github.com/go-sprout/sprout
+github.com/go-sprout/sprout/deprecated
+github.com/go-sprout/sprout/group/all
+github.com/go-sprout/sprout/internal/helpers
+github.com/go-sprout/sprout/internal/runtime
+github.com/go-sprout/sprout/registry/backward
+github.com/go-sprout/sprout/registry/checksum
+github.com/go-sprout/sprout/registry/conversion
+github.com/go-sprout/sprout/registry/encoding
+github.com/go-sprout/sprout/registry/env
+github.com/go-sprout/sprout/registry/filesystem
+github.com/go-sprout/sprout/registry/maps
+github.com/go-sprout/sprout/registry/network
+github.com/go-sprout/sprout/registry/numeric
+github.com/go-sprout/sprout/registry/random
+github.com/go-sprout/sprout/registry/reflect
+github.com/go-sprout/sprout/registry/regexp
+github.com/go-sprout/sprout/registry/semver
+github.com/go-sprout/sprout/registry/slices
+github.com/go-sprout/sprout/registry/std
+github.com/go-sprout/sprout/registry/strings
+github.com/go-sprout/sprout/registry/time
+github.com/go-sprout/sprout/registry/uniqueid
 # github.com/google/uuid v1.6.0
 ## explicit
 github.com/google/uuid
 # github.com/gorilla/mux v1.8.1
 ## explicit; go 1.20
 github.com/gorilla/mux
-# github.com/huandu/xstrings v1.5.0
-## explicit; go 1.12
-github.com/huandu/xstrings
 # github.com/mitchellh/copystructure v1.2.0
 ## explicit; go 1.15
 github.com/mitchellh/copystructure
@@ -54,25 +70,27 @@ github.com/prometheus/common/model
 github.com/prometheus/procfs
 github.com/prometheus/procfs/internal/fs
 github.com/prometheus/procfs/internal/util
-# github.com/shopspring/decimal v1.4.0
-## explicit; go 1.10
-github.com/shopspring/decimal
-# github.com/spf13/cast v1.7.0
-## explicit; go 1.19
+# github.com/spf13/cast v1.9.2
+## explicit; go 1.21.0
 github.com/spf13/cast
+github.com/spf13/cast/internal
 # github.com/urfave/cli/v3 v3.3.8
 ## explicit; go 1.22
 github.com/urfave/cli/v3
-# golang.org/x/crypto v0.26.0
-## explicit; go 1.20
-golang.org/x/crypto/bcrypt
-golang.org/x/crypto/blowfish
-golang.org/x/crypto/pbkdf2
-golang.org/x/crypto/scrypt
-# golang.org/x/sys v0.30.0
-## explicit; go 1.18
+# golang.org/x/sys v0.33.0
+## explicit; go 1.23.0
 golang.org/x/sys/unix
 golang.org/x/sys/windows
+# golang.org/x/text v0.26.0
+## explicit; go 1.23.0
+golang.org/x/text/cases
+golang.org/x/text/internal
+golang.org/x/text/internal/language
+golang.org/x/text/internal/language/compact
+golang.org/x/text/internal/tag
+golang.org/x/text/language
+golang.org/x/text/transform
+golang.org/x/text/unicode/norm
 # google.golang.org/protobuf v1.36.5
 ## explicit; go 1.21
 google.golang.org/protobuf/encoding/protodelim

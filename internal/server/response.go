@@ -4,8 +4,8 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/Masterminds/sprig/v3"
 	"github.com/framjet/go-webhook-middleman/internal/config"
+	templateRenderer "github.com/framjet/go-webhook-middleman/internal/templateRenderer"
 	"net/http"
 	"text/template"
 	"time"
@@ -139,7 +139,7 @@ func (rh *ResponseHandler) writeDefaultJSONResponse(w http.ResponseWriter) error
 
 // executeTemplate executes a template string with the response data
 func (rh *ResponseHandler) executeTemplate(templateStr string) (string, error) {
-	tmpl, err := template.New("response").Funcs(sprig.FuncMap()).Parse(templateStr)
+	tmpl, err := template.New("response").Funcs(templateRenderer.GetTplRenderer().FunctionMap).Parse(templateStr)
 	if err != nil {
 		return "", fmt.Errorf("failed to parse template: %w", err)
 	}
