@@ -27,7 +27,15 @@ routes:
           "result": {{ toJson .results }}
         }
     matchers:
-      - service: "frontend"
+      - expr: |
+          params.service == "frontend"
+        to:
+          - discord_general
+          - url: "https://hooks.slacker.com/{{.params.service}}"
+            method: "POST"
+            body: '{"text": "{{.params.service}} event: {{.params.event}}"}'
+      - expr: |
+          request.contentType == "application/json" && fromJSON(request.body).service == "backend"
         to:
           - discord_general
           - url: "https://hooks.slacker.com/{{.params.service}}"

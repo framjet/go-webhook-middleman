@@ -3,6 +3,7 @@ module github.com/framjet/go-webhook-middleman
 go 1.24
 
 require (
+	github.com/expr-lang/expr v1.17.5
 	github.com/go-sprout/sprout v1.0.1
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/mux v1.8.1

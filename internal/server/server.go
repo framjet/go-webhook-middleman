@@ -190,13 +190,6 @@ func (ws *WebhookServer) handleDynamicWebhook(w http.ResponseWriter, r *http.Req
 		params = ws.extractParams(routePath, r.URL.Path)
 	}
 
-	logger.Debug("Received webhook",
-		"params", params,
-		"method", r.Method,
-		"path", r.URL.Path,
-		"remote_addr", r.RemoteAddr,
-		"user_agent", r.Header.Get("User-Agent"))
-
 	// Record route match
 	ws.metrics.RoutesMatched.WithLabelValues(r.Method, r.URL.Path).Inc()
 
@@ -209,6 +202,17 @@ func (ws *WebhookServer) handleDynamicWebhook(w http.ResponseWriter, r *http.Req
 		return
 	}
 
+	logger.Debug("Received webhook",
+		"params", params,
+		"method", r.Method,
+		"path", r.URL.Path,
+		"remote_addr", r.RemoteAddr,
+		"user_agent", r.Header.Get("User-Agent"),
+		"content_type", r.Header.Get("Content-Type"),
+		"content_length", r.ContentLength,
+		"body", string(body),
+	)
+
 	// Create template context
 	templateCtx := templateRenderer.TemplateContext{
 		Params:    params,
@@ -219,7 +223,7 @@ func (ws *WebhookServer) handleDynamicWebhook(w http.ResponseWriter, r *http.Req
 	}
 
 	// Find matching destinations
-	destinations := ws.findMatchingDestinations(route, params, templateCtx, logger)
+	destinations := ws.findMatchingDestinations(route, params, templateCtx, r, string(body), logger)
 	if len(destinations) == 0 {
 		logger.Warn("No matching destinations found", "params", params)
 		ws.metrics.WebhooksProcessed.WithLabelValues("no_destinations").Inc()
@@ -281,12 +285,12 @@ func (ws *WebhookServer) handleDynamicWebhook(w http.ResponseWriter, r *http.Req
 	}
 }
 
-func (ws *WebhookServer) findMatchingDestinations(route *configApi.Route, params map[string]string, ctx templateRenderer.TemplateContext, logger *slog.Logger) []configApi.ResolvedDestination {
+func (ws *WebhookServer) findMatchingDestinations(route *configApi.Route, params map[string]string, ctx templateRenderer.TemplateContext, request *http.Request, body string, logger *slog.Logger) []configApi.ResolvedDestination {
 	var destinations []configApi.ResolvedDestination
 
 	// Process matchers
 	for _, matcher := range route.Matchers {
-		if ws.matcherMatches(matcher, params, logger) {
+		if ws.matcherMatches(route, matcher, params, request, body, logger) {
 			for _, destRef := range matcher.To {
 				resolved, err := ws.resolveDestination(destRef, ctx)
 				if err != nil {
@@ -301,24 +305,48 @@ func (ws *WebhookServer) findMatchingDestinations(route *configApi.Route, params
 	return destinations
 }
 
-func (ws *WebhookServer) matcherMatches(matcher configApi.Matcher, params map[string]string, logger *slog.Logger) bool {
-	// Check all fields in the matcher against URL parameters
-	for paramName, routeValue := range matcher.Params {
-		if paramName == "to" {
-			continue // Skip the 'to' field
-		}
-
-		paramValue, exists := params[paramName]
-		if !exists {
-			return false // Required parameter is not found in URL
-		}
-
-		if !ws.valueMatches(routeValue, paramValue, logger) {
-			return false
-		}
+func (ws *WebhookServer) matcherMatches(route *configApi.Route, matcher *configApi.Matcher, params map[string]string, request *http.Request, body string, logger *slog.Logger) bool {
+	userInfo := ""
+	if request.URL.User != nil {
+		userInfo = request.URL.User.String()
 	}
 
-	return true
+	env := &configApi.MatcherEnv{
+		Params:  params,
+		Var:     ws.Config.Variables,
+		Matcher: *matcher,
+		Config:  *ws.Config,
+		Route:   *route,
+		Request: configApi.RequestData{
+			Method: request.Method,
+			Url: configApi.RequestUrlData{
+				Full:     request.URL.String(),
+				Scheme:   request.URL.Scheme,
+				Host:     request.URL.Host,
+				Path:     request.URL.Path,
+				Query:    request.URL.Query(),
+				Opaque:   request.URL.Opaque,
+				Fragment: request.URL.Fragment,
+				UserInfo: userInfo,
+				RawQuery: request.URL.RawQuery,
+			},
+			Headers:     request.Header,
+			Host:        request.Host,
+			Body:        body,
+			ContentType: request.Header.Get("content-type"),
+			UserAgent:   request.UserAgent(),
+			RemoteAddr:  request.RemoteAddr,
+		},
+	}
+
+	result, err := matcher.Evaluate(env)
+	if err != nil {
+		logger.Warn("Matcher evaluation failed", "matcher", matcher, "error", err)
+
+		return false
+	}
+
+	return result
 }
 
 func (ws *WebhookServer) valueMatches(routeValue interface{}, paramValue string, logger *slog.Logger) bool {
