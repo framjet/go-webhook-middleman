@@ -1,10 +1,17 @@
 package sprout
 
 import (
+	"errors"
 	"fmt"
 	"github.com/go-sprout/sprout"
 	"net/url"
 )
+
+var ErrTemplateStopped = errors.New("template stopped")
+
+func GetErrTemplateStopped() error {
+	return ErrTemplateStopped
+}
 
 type WebhookMiddleman struct {
 	handler sprout.Handler
@@ -75,10 +82,15 @@ func (reg *WebhookMiddleman) UrlParse(value string) (map[string]any, error) {
 	return dict, nil
 }
 
+func (reg *WebhookMiddleman) Stop() (string, error) {
+	return "", GetErrTemplateStopped()
+}
+
 func (reg *WebhookMiddleman) RegisterFunctions(funcsMap sprout.FunctionMap) error {
 	sprout.AddFunction(funcsMap, "parseUrl", reg.UrlParse)
 	sprout.AddFunction(funcsMap, "urlEncode", reg.UrlEncode)
 	sprout.AddFunction(funcsMap, "urlDecode", reg.UrlDecode)
+	sprout.AddFunction(funcsMap, "stop", reg.Stop)
 
 	return nil
 }

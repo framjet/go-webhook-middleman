@@ -2,6 +2,7 @@ package templateRenderer
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"github.com/framjet/go-webhook-middleman/internal/config"
 	wmSprout "github.com/framjet/go-webhook-middleman/internal/sprout"
@@ -43,7 +44,7 @@ func GetTplRenderer() *TemplateRenderer {
 	return tplRenderer
 }
 
-func RenderTemplate(tmpl string, ctx TemplateContext) (string, error) {
+func RenderTemplate(tmpl string, resolved config.ResolvedDestination, ctx TemplateContext) (string, error) {
 	if tmpl == "" {
 		return "", nil
 	}
@@ -60,10 +61,19 @@ func RenderTemplate(tmpl string, ctx TemplateContext) (string, error) {
 		"body":    ctx.Body,
 		"route":   ctx.Route,
 		"request": ctx.Request,
+		"resolved": map[string]interface{}{
+			"method":  resolved.Method,
+			"headers": resolved.Headers,
+			"body":    string(resolved.Body),
+		},
 	}
 
 	err = t.Execute(&buf, data)
 	if err != nil {
+		if errors.Is(err, wmSprout.GetErrTemplateStopped()) {
+			return "", err
+		}
+
 		return "", fmt.Errorf("template execute error: %w", err)
 	}
 

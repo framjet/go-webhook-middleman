@@ -4,9 +4,11 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	configApi "github.com/framjet/go-webhook-middleman/internal/config"
 	metricsApi "github.com/framjet/go-webhook-middleman/internal/metrics"
+	"github.com/framjet/go-webhook-middleman/internal/sprout"
 	"github.com/framjet/go-webhook-middleman/internal/templateRenderer"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
@@ -294,6 +296,11 @@ func (ws *WebhookServer) findMatchingDestinations(route *configApi.Route, params
 			for _, destRef := range matcher.To {
 				resolved, err := ws.resolveDestination(destRef, ctx)
 				if err != nil {
+					if errors.Is(err, sprout.GetErrTemplateStopped()) {
+						logger.Debug("Template rendering stopped. Skipping destination", "dest", destRef)
+						continue
+					}
+
 					logger.Error("Failed to resolve destination", "error", err, "dest", destRef)
 					continue
 				}
@@ -394,8 +401,12 @@ func (ws *WebhookServer) resolveDestination(ref configApi.DestinationRef, ctx te
 		// Look up in global destinations
 		if globalDest, exists := ws.Config.Destinations[ref.Name]; exists {
 			var err error
-			resolved.URL, err = templateRenderer.RenderTemplate(globalDest.URL, ctx)
+			resolved.URL, err = templateRenderer.RenderTemplate(globalDest.URL, resolved, ctx)
 			if err != nil {
+				if errors.Is(err, sprout.GetErrTemplateStopped()) {
+					return resolved, err
+				}
+
 				return resolved, fmt.Errorf("failed to render global destination URL: %w", err)
 			}
 			resolved.Name = ref.Name
@@ -404,8 +415,12 @@ func (ws *WebhookServer) resolveDestination(ref configApi.DestinationRef, ctx te
 				resolved.Method = globalDest.Method
 			}
 			if globalDest.Body != "" {
-				bodyStr, err := templateRenderer.RenderTemplate(globalDest.Body, ctx)
+				bodyStr, err := templateRenderer.RenderTemplate(globalDest.Body, resolved, ctx)
 				if err != nil {
+					if errors.Is(err, sprout.GetErrTemplateStopped()) {
+						return resolved, err
+					}
+
 					return resolved, fmt.Errorf("failed to render global destination body: %w", err)
 				}
 				resolved.Body = []byte(bodyStr)
@@ -418,8 +433,12 @@ func (ws *WebhookServer) resolveDestination(ref configApi.DestinationRef, ctx te
 	// Override with inline destination settings
 	if ref.URL != "" {
 		var err error
-		resolved.URL, err = templateRenderer.RenderTemplate(ref.URL, ctx)
+		resolved.URL, err = templateRenderer.RenderTemplate(ref.URL, resolved, ctx)
 		if err != nil {
+			if errors.Is(err, sprout.GetErrTemplateStopped()) {
+				return resolved, err
+			}
+
 			return resolved, fmt.Errorf("failed to render inline destination URL: %w", err)
 		}
 		resolved.Name = "inline"
@@ -430,8 +449,12 @@ func (ws *WebhookServer) resolveDestination(ref configApi.DestinationRef, ctx te
 
 	if ref.Headers != nil {
 		for key, value := range ref.Headers {
-			renderedValue, err := templateRenderer.RenderTemplate(value, ctx)
+			renderedValue, err := templateRenderer.RenderTemplate(value, resolved, ctx)
 			if err != nil {
+				if errors.Is(err, sprout.GetErrTemplateStopped()) {
+					return resolved, err
+				}
+
 				return resolved, fmt.Errorf("failed to render header '%s': %w", key, err)
 			}
 			resolved.Headers[key] = renderedValue
@@ -439,8 +462,12 @@ func (ws *WebhookServer) resolveDestination(ref configApi.DestinationRef, ctx te
 	}
 
 	if ref.Body != "" {
-		bodyStr, err := templateRenderer.RenderTemplate(ref.Body, ctx)
+		bodyStr, err := templateRenderer.RenderTemplate(ref.Body, resolved, ctx)
 		if err != nil {
+			if errors.Is(err, sprout.GetErrTemplateStopped()) {
+				return resolved, err
+			}
+
 			return resolved, fmt.Errorf("failed to render inline destination body: %w", err)
 		}
 		resolved.Body = []byte(bodyStr)
